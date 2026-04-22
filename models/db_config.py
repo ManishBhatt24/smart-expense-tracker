@@ -80,6 +80,10 @@ def get_db_connection():
 
 def get_sqlite_conn_internal():
     db_path = 'finance_tracker.db'
+    # Vercel environment is read-only. We must use /tmp for SQLite
+    if os.environ.get('VERCEL'):
+        db_path = '/tmp/finance_tracker.db'
+        
     conn = sqlite3.connect(db_path, check_same_thread=False)
     conn.row_factory = sqlite3.Row
     # Initialize ... (same as before)
