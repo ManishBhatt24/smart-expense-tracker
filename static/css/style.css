@@ -278,3 +278,30 @@ body.light-mode select option {
     .stat-value { font-size: 1.8rem; }
     .glass-card { padding: 1.5rem; }
 }
+
+/* High-Visibility Alert Styles for Dark Mode */
+body:not(.light-mode) .alert-danger {
+    background: rgba(220, 38, 38, 0.2) !important;
+    border: 1px solid rgba(220, 38, 38, 0.5) !important;
+    color: #ff8a8a !important;
+    backdrop-filter: blur(10px);
+}
+
+body:not(.light-mode) .alert-warning {
+    background: rgba(217, 119, 6, 0.2) !important;
+    border: 1px solid rgba(217, 119, 6, 0.5) !important;
+    color: #ffdb7e !important;
+    backdrop-filter: blur(10px);
+}
+
+body:not(.light-mode) .alert-success {
+    background: rgba(5, 150, 105, 0.2) !important;
+    border: 1px solid rgba(5, 150, 105, 0.5) !important;
+    color: #a7f3d0 !important;
+    backdrop-filter: blur(10px);
+}
+
+body:not(.light-mode) .alert strong {
+    color: inherit !important;
+    text-shadow: 0 0 10px rgba(255, 255, 255, 0.2);
+}

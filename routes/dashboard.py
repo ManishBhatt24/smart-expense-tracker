@@ -49,10 +49,12 @@ def dashboard():
     budget_limit = safe_float(budget_row['limit_amount'] if budget_row else 0)
     
     # Budget alert check
-    month_total_row = query_db("SELECT SUM(amount) as month_total FROM expenses WHERE user_id = %s AND strftime('%m', date) = strftime('%m', 'now')", (user_id,), one=True)
+    month_total_row = query_db("SELECT SUM(amount) as month_total FROM expenses WHERE user_id = %s AND strftime('%m %Y', date) = strftime('%m %Y', 'now')", (user_id,), one=True)
     current_month_total = safe_float(month_total_row['month_total'])
     
     budget_status = None
+    current_month_name = datetime.now().strftime('%B %Y')
+    
     if budget_limit > 0:
         percent = (current_month_total / budget_limit) * 100
         if percent >= 100:
@@ -68,4 +70,5 @@ def dashboard():
                            category_data=category_data,
                            monthly_data=monthly_data,
                            budget_limit=budget_limit,
-                           budget_status=budget_status)
+                           budget_status=budget_status,
+                           current_month_name=current_month_name)

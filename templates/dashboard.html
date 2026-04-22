@@ -28,9 +28,9 @@
         <div class="alert {% if budget_status == 'exceeded' %}alert-danger{% else %}alert-warning{% endif %} glass-card">
             <i class="fas fa-exclamation-triangle me-2"></i>
             {% if budget_status == 'exceeded' %}
-                <strong>Budget Exceeded!</strong> You have spent more than your monthly limit of ₹{{ "{:,.2f}".format(budget_limit) }}.
+                <strong>Budget Exceeded for {{ current_month_name }}!</strong> You have spent more than your monthly limit of ₹{{ "{:,.2f}".format(budget_limit) }}.
             {% else %}
-                <strong>Budget Warning!</strong> You have reached 80% of your monthly limit of ₹{{ "{:,.2f}".format(budget_limit) }}.
+                <strong>Budget Warning for {{ current_month_name }}!</strong> You have reached 80% of your monthly limit of ₹{{ "{:,.2f}".format(budget_limit) }}.
             {% endif %}
         </div>
     </div>
@@ -70,7 +70,7 @@
                     <label class="form-label">Monthly Budget Limit</label>
                     <div class="input-group">
                         <span class="input-group-text bg-transparent border-secondary text-inherit">₹</span>
-                        <input type="number" name="budget_amount" class="form-control" placeholder="{{ budget_limit }}">
+                        <input type="number" name="budget_amount" class="form-control" value="{{ budget_limit }}">
                     </div>
                 </div>
                 <button type="submit" class="btn btn-glass w-100">Update Budget</button>
