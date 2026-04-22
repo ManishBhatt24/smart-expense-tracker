@@ -1,0 +1,10 @@
+flask
+flask-session
+mysql-connector-python
+pandas
+numpy
+matplotlib
+scikit-learn
+python-dotenv
+reportlab
+gunicorn

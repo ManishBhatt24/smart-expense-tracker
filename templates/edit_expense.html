@@ -1,0 +1,46 @@
+{% extends "layout.html" %}
+
+{% block content %}
+<div class="row justify-content-center">
+    <div class="col-md-6">
+        <div class="glass-card">
+            <h2 class="mb-4">Edit Expense</h2>
+            <form method="POST">
+                <div class="mb-3">
+                    <label class="form-label">Amount</label>
+                    <div class="input-group">
+                        <span class="input-group-text bg-transparent border-secondary text-inherit">₹</span>
+                        <input type="number" step="0.01" name="amount" class="form-control" value="{{ expense.amount }}" required>
+                    </div>
+                </div>
+                <div class="mb-3">
+                    <label class="form-label">Category</label>
+                    <select name="category" class="form-select" required>
+                        <option value="Food" {% if expense.category == 'Food' %}selected{% endif %}>Food</option>
+                        <option value="Travel" {% if expense.category == 'Travel' %}selected{% endif %}>Travel</option>
+                        <option value="Bills" {% if expense.category == 'Bills' %}selected{% endif %}>Bills</option>
+                        <option value="Shopping" {% if expense.category == 'Shopping' %}selected{% endif %}>Shopping</option>
+                        <option value="Healthcare" {% if expense.category == 'Healthcare' %}selected{% endif %}>Healthcare</option>
+                        <option value="Entertainment" {% if expense.category == 'Entertainment' %}selected{% endif %}>Entertainment</option>
+                        <option value="Rent/EMI" {% if expense.category == 'Rent/EMI' %}selected{% endif %}>Rent/EMI</option>
+                        <option value="Education" {% if expense.category == 'Education' %}selected{% endif %}>Education</option>
+                        <option value="Others" {% if expense.category == 'Others' %}selected{% endif %}>Others</option>
+                    </select>
+                </div>
+                <div class="mb-3">
+                    <label class="form-label">Date</label>
+                    <input type="date" name="date" class="form-control" value="{{ expense.date }}" required>
+                </div>
+                <div class="mb-3">
+                    <label class="form-label">Description</label>
+                    <textarea name="description" class="form-control" rows="3">{{ expense.description }}</textarea>
+                </div>
+                <div class="d-flex gap-2">
+                    <button type="submit" class="btn btn-glass px-5">Update</button>
+                    <a href="{{ url_for('expenses.list_expenses') }}" class="btn btn-glass px-4">Cancel</a>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+{% endblock %}

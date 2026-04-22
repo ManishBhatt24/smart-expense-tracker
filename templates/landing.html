@@ -1,0 +1,43 @@
+{% extends "layout.html" %}
+
+{% block content %}
+<div class="row min-vh-75 align-items-center">
+    <div class="col-md-6">
+        <h1 class="display-3 fw-bold mb-4">Smart Finance Tracking Made <span class="text-info">Simple.</span></h1>
+        <p class="lead mb-5 opacity-75">Take control of your money with our AI-powered expense tracker. Beautifully designed for clarity and ease of use.</p>
+        <div class="d-flex gap-3">
+            <a href="{{ url_for('auth.register') }}" class="btn btn-glass btn-lg px-5">Get Started</a>
+            <a href="#features" class="btn btn-outline-light btn-lg px-5">Learn More</a>
+        </div>
+    </div>
+    <div class="col-md-6 text-center">
+        <div class="glass-card animate-fade">
+            <i class="fas fa-chart-line fa-10x opacity-50"></i>
+        </div>
+    </div>
+</div>
+
+<div id="features" class="row mt-5 pt-5 pb-5">
+    <div class="col-md-4 mb-4">
+        <div class="glass-card text-center h-100">
+            <i class="fas fa-coins fa-3x mb-3 text-info"></i>
+            <h3>Expense Tracking</h3>
+            <p>Log your daily spending in seconds and categorize them automatically.</p>
+        </div>
+    </div>
+    <div class="col-md-4 mb-4">
+        <div class="glass-card text-center h-100">
+            <i class="fas fa-robot fa-3x mb-3 text-info"></i>
+            <h3>ML Predictions</h3>
+            <p>Our smart algorithm predicts your next month's spending based on your history.</p>
+        </div>
+    </div>
+    <div class="col-md-4 mb-4">
+        <div class="glass-card text-center h-100">
+            <i class="fas fa-bell fa-3x mb-3 text-info"></i>
+            <h3>Budget Alerts</h3>
+            <p>Get notified when you are close to your monthly budget limit.</p>
+        </div>
+    </div>
+</div>
+{% endblock %}

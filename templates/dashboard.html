@@ -1,0 +1,84 @@
+{% extends "layout.html" %}
+
+{% block content %}
+<div class="row mb-4">
+    <div class="col-md-4 mb-3">
+        <div class="glass-card dashboard-stat">
+            <div class="stat-label">Total Income</div>
+            <div class="stat-value">₹{{ "{:,.2f}".format(total_income) }}</div>
+        </div>
+    </div>
+    <div class="col-md-4 mb-3">
+        <div class="glass-card dashboard-stat">
+            <div class="stat-label">Total Expenses</div>
+            <div class="stat-value">₹{{ "{:,.2f}".format(total_expenses) }}</div>
+        </div>
+    </div>
+    <div class="col-md-4 mb-3">
+        <div class="glass-card dashboard-stat">
+            <div class="stat-label">Current Balance</div>
+            <div class="stat-value">₹{{ "{:,.2f}".format(balance) }}</div>
+        </div>
+    </div>
+</div>
+
+{% if budget_status %}
+<div class="row mb-4">
+    <div class="col-12">
+        <div class="alert {% if budget_status == 'exceeded' %}alert-danger{% else %}alert-warning{% endif %} glass-card">
+            <i class="fas fa-exclamation-triangle me-2"></i>
+            {% if budget_status == 'exceeded' %}
+                <strong>Budget Exceeded!</strong> You have spent more than your monthly limit of ₹{{ "{:,.2f}".format(budget_limit) }}.
+            {% else %}
+                <strong>Budget Warning!</strong> You have reached 80% of your monthly limit of ₹{{ "{:,.2f}".format(budget_limit) }}.
+            {% endif %}
+        </div>
+    </div>
+</div>
+{% endif %}
+
+<div class="row mb-4">
+    <div class="col-md-8 mb-4">
+        <div class="glass-card">
+            <h4>Recent Expenses</h4>
+            <table class="table table-hover mt-3">
+                <thead>
+                    <tr>
+                        <th>Date</th>
+                        <th>Category</th>
+                        <th>Amount</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for expense in recent_expenses %}
+                    <tr>
+                        <td>{{ expense.date }}</td>
+                        <td>{{ expense.category }}</td>
+                        <td>₹{{ "{:,.2f}".format(expense.amount) }}</td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+            <a href="{{ url_for('expenses.list_expenses') }}" class="text-info">See all expenses</a>
+        </div>
+    </div>
+    <div class="col-md-4">
+        <div class="glass-card">
+            <h4>Quick Settings</h4>
+            <form action="{{ url_for('income.set_budget') }}" method="POST">
+                <div class="mb-3">
+                    <label class="form-label">Monthly Budget Limit</label>
+                    <div class="input-group">
+                        <span class="input-group-text bg-transparent border-secondary text-inherit">₹</span>
+                        <input type="number" name="budget_amount" class="form-control" placeholder="{{ budget_limit }}">
+                    </div>
+                </div>
+                <button type="submit" class="btn btn-glass w-100">Update Budget</button>
+            </form>
+            <hr class="border-secondary mt-4">
+            <a href="{{ url_for('expenses.add_expense') }}" class="btn btn-glass w-100 mb-3 text-center">Add Expense</a>
+            <a href="{{ url_for('income.add_income') }}" class="btn btn-glass w-100 text-center" style="background: linear-gradient(135deg, #10B981, #3B82F6);">Add Income</a>
+        </div>
+    </div>
+</div>
+{% endblock %}
