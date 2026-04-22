@@ -1,21 +1,7 @@
-# Python
 __pycache__/
-*.py[cod]
-*$py.class
+*.pyc
 .env
-.venv
-env/
-venv/
-ENV/
-env.bak/
-venv.bak/
-
-# Database
 finance_tracker.db
-
-# Vercel
-.vercel
-
-# IDEs
-.vscode/
-.idea/
+instance/
+.vercel/
+*.log
