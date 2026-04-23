@@ -57,6 +57,22 @@
         </div>
     </div>
 </div>
+
+<div class="row mt-4">
+    <div class="col-12">
+        <div class="glass-card">
+            <h3 class="mb-4">Spending Regression Analysis</h3>
+            {% if plot_url %}
+                <img src="data:image/png;base64,{{ plot_url }}" class="img-fluid w-100 rounded" alt="Spending Plot">
+            {% else %}
+                <div class="text-center p-5">
+                    <i class="fas fa-chart-area fa-5x opacity-25 mb-3"></i>
+                    <p>Insufficient data to generate regression plot.</p>
+                </div>
+            {% endif %}
+        </div>
+    </div>
+</div>
 {% endblock %}
 
 {% block scripts %}
@@ -89,19 +105,19 @@
         }
     });
 
-    // Monthly Trend Line Chart
+    // Monthly Trend Bar Chart
     const trendCtx = document.getElementById('trendChart').getContext('2d');
     const trendChart = new Chart(trendCtx, {
-        type: 'line',
+        type: 'bar',
         data: {
             labels: [{% for item in monthly_data %}'{{ item.month }}',{% endfor %}],
             datasets: [{
                 label: 'Spending',
                 data: [{% for item in monthly_data %}{{ item.total }},{% endfor %}],
+                backgroundColor: 'rgba(139, 92, 246, 0.5)',
                 borderColor: 'rgba(139, 92, 246, 1)',
-                backgroundColor: 'rgba(139, 92, 246, 0.2)',
-                fill: true,
-                tension: 0.4
+                borderWidth: 2,
+                borderRadius: 8
             }]
         },
         options: { 

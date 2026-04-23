@@ -1,4 +1,10 @@
 from flask import Blueprint, render_template, session, redirect, url_for, send_file
+import pandas as pd
+import numpy as np
+from sklearn.linear_model import LinearRegression
+import matplotlib
+matplotlib.use('Agg')
+import matplotlib.pyplot as plt
 import io
 import base64
 import csv
@@ -14,11 +20,11 @@ def analytics():
         return redirect(url_for('auth.login'))
     
     user_id = session['user_id']
-    
-    # Category Distribution
+    rows = query_db("SELECT amount, date, category FROM expenses WHERE user_id = %s", (user_id,))
+    df = pd.DataFrame(rows)
+
     category_data = query_db("SELECT category, SUM(amount) as total FROM expenses WHERE user_id = %s GROUP BY category", (user_id,))
     
-    # Monthly Spending Trend (Last 6 Months)
     monthly_data = query_db("""
         SELECT strftime('%m %Y', date) as month, SUM(amount) as total 
         FROM expenses 
@@ -27,12 +33,38 @@ def analytics():
         ORDER BY MIN(date)
     """, (user_id,))
 
-    # Simple prediction based on average of last 3 months
-    recent_totals = [row['total'] for row in monthly_data[-3:]] if monthly_data else []
-    prediction = sum(recent_totals) / len(recent_totals) if recent_totals else 0
+    prediction = None
+    plot_url = None
+
+    if not df.empty:
+        df['date'] = pd.to_datetime(df['date'])
+        df['month_year'] = df['date'].dt.to_period('M')
+        monthly_sums = df.groupby('month_year')['amount'].sum().reset_index()
+        monthly_sums['month_index'] = range(len(monthly_sums))
+
+        if len(monthly_sums) >= 2:
+            X = monthly_sums[['month_index']]
+            y = monthly_sums['amount']
+            model = LinearRegression()
+            model.fit(X, y)
+            prediction = model.predict(np.array([[len(monthly_sums)]]))[0]
+        
+        plt.figure(figsize=(10, 5))
+        plt.plot(monthly_sums['month_year'].astype(str), monthly_sums['amount'], marker='o', color='#6a11cb')
+        plt.title('Monthly Spending Trend')
+        plt.xlabel('Month')
+        plt.ylabel('Amount (₹)')
+        plt.grid(True, linestyle='--', alpha=0.7)
+        
+        img = io.BytesIO()
+        plt.savefig(img, format='png', bbox_inches='tight', transparent=True)
+        img.seek(0)
+        plot_url = base64.b64encode(img.getvalue()).decode('utf8')
+        plt.close()
 
     return render_template('analytics.html', 
-                           prediction=round(prediction, 2), 
+                           prediction=round(prediction, 2) if prediction else "Not enough data", 
+                           plot_url=plot_url,
                            category_data=category_data,
                            monthly_data=monthly_data)
 

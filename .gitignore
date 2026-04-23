@@ -1,9 +1,8 @@
-*.pyc
-__pycache__/
 .env
-instance/
-.pytest_cache/
+*.db
+__pycache__/
+*.pyc
+.gemini/
 .vscode/
 venv/
-env/
-*.db
+node_modules/
