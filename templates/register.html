@@ -4,8 +4,12 @@
 <div class="row justify-content-center">
     <div class="col-md-5">
         <div class="glass-card">
-            <h2 class="text-center mb-4">Create Account</h2>
-            <form method="POST">
+            <div class="text-center mb-4">
+                <span class="badge {% if db_info == 'Temporary' %}bg-warning{% else %}bg-success{% endif %} mb-2">
+                    <i class="fas fa-database me-1"></i> {{ db_info }} Storage
+                </span>
+                <h2>Create Account</h2>
+            </div>
                 <div class="mb-3">
                     <label class="form-label">Full Name</label>
                     <input type="text" name="name" class="form-control" required>

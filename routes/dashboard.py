@@ -62,6 +62,10 @@ def dashboard():
         elif percent >= 80:
             budget_status = 'warning'
 
+    db_conn = get_db_connection()
+    db_type = 'Persistent' if not db_conn.is_sqlite else 'Temporary (Vercel)'
+    db_conn.close()
+
     return render_template('dashboard.html', 
                            total_income=total_income, 
                            total_expenses=total_expenses, 
@@ -71,4 +75,5 @@ def dashboard():
                            monthly_data=monthly_data,
                            budget_limit=budget_limit,
                            budget_status=budget_status,
-                           current_month_name=current_month_name)
+                           current_month_name=current_month_name,
+                           db_type=db_type)
