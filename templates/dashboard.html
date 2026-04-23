@@ -21,16 +21,6 @@
         </div>
     </div>
 </div>
-{% if db_type == 'Temporary (Vercel)' %}
-<div class="row mb-3">
-    <div class="col-12">
-        <div class="alert alert-info glass-card">
-            <i class="fas fa-database me-2"></i>
-            <strong>Storage Warning:</strong> You are using temporary storage on Vercel. Your data will be deleted when the server goes idle. Please connect a MySQL database for permanent storage.
-        </div>
-    </div>
-</div>
-{% endif %}
 
 {% if budget_status %}
 <div class="row mb-4">

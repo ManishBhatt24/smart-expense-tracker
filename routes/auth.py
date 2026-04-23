@@ -6,10 +6,6 @@ auth_bp = Blueprint('auth', __name__)
 
 @auth_bp.route('/register', methods=['GET', 'POST'])
 def register():
-    db_conn = get_db_connection()
-    db_info = "Temporary" if db_conn.is_sqlite else "Persistent"
-    db_conn.close()
-
     if request.method == 'POST':
         name = request.form['name']
         email = request.form['email']
@@ -23,45 +19,47 @@ def register():
         hashed_password = generate_password_hash(password)
         
         conn = get_db_connection()
-        cursor = conn.cursor()
-        try:
-            cursor.execute("INSERT INTO users (name, email, password) VALUES (%s, %s, %s)", (name, email, hashed_password))
-            conn.commit()
-            flash('Registration successful! Please login.', 'success')
-            return redirect(url_for('auth.login'))
-        except Exception as e:
-            flash(f'Error: {str(e)}', 'danger')
-        finally:
-            cursor.close()
-            conn.close()
+        if conn:
+            cursor = conn.cursor()
+            try:
+                cursor.execute("INSERT INTO users (name, email, password) VALUES (%s, %s, %s)", (name, email, hashed_password))
+                conn.commit()
+                flash('Registration successful! Please login.', 'success')
+                return redirect(url_for('auth.login'))
+            except Exception as e:
+                flash(f'Error: {str(e)}', 'danger')
+            finally:
+                cursor.close()
+                close_connection(conn)
+        else:
+            flash('Database connection failed!', 'danger')
 
-    return render_template('register.html', db_info=db_info)
+    return render_template('register.html')
 
 @auth_bp.route('/login', methods=['GET', 'POST'])
 def login():
-    db_conn = get_db_connection()
-    db_info = "Temporary" if db_conn.is_sqlite else "Persistent"
-    db_conn.close()
-
     if request.method == 'POST':
         email = request.form['email']
         password = request.form['password']
 
         conn = get_db_connection()
-        cursor = conn.cursor(dictionary=True)
-        cursor.execute("SELECT * FROM users WHERE email = %s", (email,))
-        user = cursor.fetchone()
-        cursor.close()
-        conn.close()
+        if conn:
+            cursor = conn.cursor(dictionary=True)
+            cursor.execute("SELECT * FROM users WHERE email = %s", (email,))
+            user = cursor.fetchone()
+            cursor.close()
+            close_connection(conn)
 
-        if user and check_password_hash(user['password'], password):
-            session['user_id'] = user['id']
-            session['user_name'] = user['name']
-            return redirect(url_for('dashboard.dashboard'))
+            if user and check_password_hash(user['password'], password):
+                session['user_id'] = user['id']
+                session['user_name'] = user['name']
+                return redirect(url_for('dashboard.dashboard'))
+            else:
+                flash('Invalid email or password!', 'danger')
         else:
-            flash('Invalid email or password!', 'danger')
+            flash('Database connection failed!', 'danger')
 
-    return render_template('login.html', db_info=db_info)
+    return render_template('login.html')
 
 @auth_bp.route('/logout')
 def logout():
