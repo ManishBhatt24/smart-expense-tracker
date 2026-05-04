@@ -1,6 +1,6 @@
 from flask import Blueprint, render_template, request, redirect, url_for, flash, session
 from werkzeug.security import generate_password_hash, check_password_hash
-from models.db_config import get_db_connection, close_connection
+from models.db_config import query_db
 
 auth_bp = Blueprint('auth', __name__)
 
@@ -18,21 +18,12 @@ def register():
 
         hashed_password = generate_password_hash(password)
         
-        conn = get_db_connection()
-        if conn:
-            cursor = conn.cursor()
-            try:
-                cursor.execute("INSERT INTO users (name, email, password) VALUES (%s, %s, %s)", (name, email, hashed_password))
-                conn.commit()
-                flash('Registration successful! Please login.', 'success')
-                return redirect(url_for('auth.login'))
-            except Exception as e:
-                flash(f'Error: {str(e)}', 'danger')
-            finally:
-                cursor.close()
-                close_connection(conn)
-        else:
-            flash('Database connection failed!', 'danger')
+        try:
+            query_db("INSERT INTO users (name, email, password) VALUES (%s, %s, %s)", (name, email, hashed_password))
+            flash('Registration successful! Please login.', 'success')
+            return redirect(url_for('auth.login'))
+        except Exception as e:
+            flash(f'Registration Error (maybe email exists?): {str(e)}', 'danger')
 
     return render_template('register.html')
 
@@ -42,22 +33,14 @@ def login():
         email = request.form['email']
         password = request.form['password']
 
-        conn = get_db_connection()
-        if conn:
-            cursor = conn.cursor(dictionary=True)
-            cursor.execute("SELECT * FROM users WHERE email = %s", (email,))
-            user = cursor.fetchone()
-            cursor.close()
-            close_connection(conn)
+        user = query_db("SELECT * FROM users WHERE email = %s", (email,), one=True)
 
-            if user and check_password_hash(user['password'], password):
-                session['user_id'] = user['id']
-                session['user_name'] = user['name']
-                return redirect(url_for('dashboard.dashboard'))
-            else:
-                flash('Invalid email or password!', 'danger')
+        if user and check_password_hash(user['password'], password):
+            session['user_id'] = user['id']
+            session['user_name'] = user['name']
+            return redirect(url_for('dashboard.dashboard'))
         else:
-            flash('Database connection failed!', 'danger')
+            flash('Invalid email or password!', 'danger')
 
     return render_template('login.html')
 
