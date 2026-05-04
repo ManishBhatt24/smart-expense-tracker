@@ -37,10 +37,10 @@ def dashboard():
     
     # Get monthly expenses for bar chart (last 6 months)
     monthly_data = query_db("""
-        SELECT strftime('%m %Y', date) as month, SUM(amount) as total 
+        SELECT TO_CHAR(date::date, 'MM YYYY') as month, SUM(amount) as total 
         FROM expenses 
-        WHERE user_id = %s AND date >= date('now', '-6 months')
-        GROUP BY month 
+        WHERE user_id = %s AND date::date >= CURRENT_DATE - INTERVAL '6 months'
+        GROUP BY TO_CHAR(date::date, 'MM YYYY')
         ORDER BY MIN(date)
     """, (user_id,))
 
@@ -49,7 +49,7 @@ def dashboard():
     budget_limit = safe_float(budget_row['limit_amount'] if budget_row else 0)
     
     # Budget alert check
-    month_total_row = query_db("SELECT SUM(amount) as month_total FROM expenses WHERE user_id = %s AND strftime('%m %Y', date) = strftime('%m %Y', 'now')", (user_id,), one=True)
+    month_total_row = query_db("SELECT SUM(amount) as month_total FROM expenses WHERE user_id = %s AND TO_CHAR(date::date, 'MM YYYY') = TO_CHAR(CURRENT_DATE, 'MM YYYY')", (user_id,), one=True)
     current_month_total = safe_float(month_total_row['month_total'])
     
     budget_status = None

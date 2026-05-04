@@ -1,122 +1,98 @@
 import psycopg2
-from psycopg2.extras import DictCursor
+from psycopg2.extras import RealDictCursor
 import os
 from dotenv import load_dotenv
 
 load_dotenv()
 
-class DBConnection:
-    def __init__(self, conn):
-        self.conn = conn
-    
-    def cursor(self, dictionary=True):
-        if dictionary:
-            return self.conn.cursor(cursor_factory=DictCursor)
-        else:
-            return self.conn.cursor()
-    
-    def commit(self):
-        self.conn.commit()
-    
-    def close(self):
-        self.conn.close()
+# We expect SUPABASE_DB_URL in the .env file
+# Format: postgresql://postgres.xxxx:password@aws-0-eu-central-1.pooler.supabase.com:6543/postgres
+DB_URL = os.getenv('SUPABASE_DB_URL')
 
 def get_db_connection():
-    # Only connect using Supabase Postgres URL
-    database_url = os.getenv('DATABASE_URL')
-    
-    if not database_url:
-        raise ValueError("DATABASE_URL environment variable is missing! Please add it to Vercel Settings.")
-
+    if not DB_URL:
+        print("SUPABASE_DB_URL is not set in .env. Please configure your Supabase connection string.")
+        return None
     try:
-        connection = psycopg2.connect(database_url)
-        
-        # Ensure tables exist in Supabase Postgres on startup
-        cursor = connection.cursor()
-        
-        # Create users table
-        cursor.execute("""
-            CREATE TABLE IF NOT EXISTS users (
-                id SERIAL PRIMARY KEY, 
-                name VARCHAR(255) NOT NULL, 
-                email VARCHAR(255) UNIQUE NOT NULL, 
-                password TEXT NOT NULL, 
-                created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
-            )
-        """)
-        
-        # Create expenses table
-        cursor.execute("""
-            CREATE TABLE IF NOT EXISTS expenses (
-                id SERIAL PRIMARY KEY, 
-                user_id INTEGER REFERENCES users(id) ON DELETE CASCADE, 
-                amount DECIMAL(10, 2) NOT NULL, 
-                category VARCHAR(255) NOT NULL, 
-                date DATE NOT NULL, 
-                description TEXT, 
-                created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
-            )
-        """)
-        
-        # Create income table
-        cursor.execute("""
-            CREATE TABLE IF NOT EXISTS income (
-                id SERIAL PRIMARY KEY, 
-                user_id INTEGER REFERENCES users(id) ON DELETE CASCADE, 
-                amount DECIMAL(10, 2) NOT NULL, 
-                source VARCHAR(255) NOT NULL, 
-                date DATE NOT NULL, 
-                created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
-            )
-        """)
-        
-        # Create budget table
-        cursor.execute("""
-            CREATE TABLE IF NOT EXISTS budget (
-                id SERIAL PRIMARY KEY, 
-                user_id INTEGER REFERENCES users(id) ON DELETE CASCADE, 
-                limit_amount DECIMAL(10, 2) NOT NULL, 
-                created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
-            )
-        """)
-        
-        connection.commit()
-        cursor.close()
-        
-        return DBConnection(connection)
-        
+        conn = psycopg2.connect(DB_URL)
+        return conn
     except Exception as e:
-        raise ConnectionError(f"Supabase Connection Error: {str(e)}")
-
-def close_connection(connection):
-    if connection:
-        connection.close()
+        print(f"Failed to connect to Supabase: {e}")
+        return None
 
 def query_db(query, params=(), one=False):
-    try:
-        conn = get_db_connection()
-    except Exception as e:
-        print(f"Database Initialization Error: {e}")
-        return []
+    conn = get_db_connection()
+    if not conn:
+        return None if one else []
     
-    cursor = conn.cursor(dictionary=True)
+    cursor = conn.cursor(cursor_factory=RealDictCursor)
     try:
         cursor.execute(query, params)
         
-        # Commit for mutating queries
-        if any(q in query.upper() for q in ['INSERT', 'UPDATE', 'DELETE', 'CREATE']):
+        # Commit for data-modifying queries
+        if any(q in query.upper() for q in ['INSERT', 'UPDATE', 'DELETE', 'CREATE', 'DROP']):
             conn.commit()
-        
-        # Fetch results safely
-        if cursor.description: 
-            rv = cursor.fetchall()
+            rv = None
         else:
-            rv = []
+            rv = cursor.fetchall()
+            
     except Exception as e:
-        print(f"Database Query Error: {e}")
+        print(f"Database error executing query '{query}': {e}")
         rv = []
+        conn.rollback()
     finally:
         cursor.close()
         conn.close()
         
     return (rv[0] if rv else None) if one else rv
+
+def init_db():
+    conn = get_db_connection()
+    if not conn:
+        return
+    cursor = conn.cursor()
+    try:
+        cursor.execute("""
+            CREATE TABLE IF NOT EXISTS users (
+                id SERIAL PRIMARY KEY,
+                name VARCHAR(255),
+                email VARCHAR(255) UNIQUE,
+                password VARCHAR(255),
+                created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+            )
+        """)
+        cursor.execute("""
+            CREATE TABLE IF NOT EXISTS expenses (
+                id SERIAL PRIMARY KEY,
+                user_id INTEGER,
+                amount DECIMAL(10, 2),
+                category VARCHAR(255),
+                date DATE,
+                description TEXT,
+                created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+            )
+        """)
+        cursor.execute("""
+            CREATE TABLE IF NOT EXISTS income (
+                id SERIAL PRIMARY KEY,
+                user_id INTEGER,
+                amount DECIMAL(10, 2),
+                source VARCHAR(255),
+                date DATE,
+                created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+            )
+        """)
+        cursor.execute("""
+            CREATE TABLE IF NOT EXISTS budget (
+                id SERIAL PRIMARY KEY,
+                user_id INTEGER,
+                limit_amount DECIMAL(10, 2),
+                created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+            )
+        """)
+        conn.commit()
+    except Exception as e:
+        print(f"Error initializing Supabase tables: {e}")
+    finally:
+        cursor.close()
+        conn.close()
