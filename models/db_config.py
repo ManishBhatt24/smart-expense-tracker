@@ -26,8 +26,7 @@ def get_db_connection():
     database_url = os.getenv('DATABASE_URL')
     
     if not database_url:
-        print("ERROR: DATABASE_URL environment variable is not set. Please check your .env file or Vercel settings.")
-        return None
+        raise ValueError("DATABASE_URL environment variable is missing! Please add it to Vercel Settings.")
 
     try:
         connection = psycopg2.connect(database_url)
@@ -87,16 +86,17 @@ def get_db_connection():
         return DBConnection(connection)
         
     except Exception as e:
-        print(f"Supabase Connection Error: {e}")
-        return None
+        raise ConnectionError(f"Supabase Connection Error: {str(e)}")
 
 def close_connection(connection):
     if connection:
         connection.close()
 
 def query_db(query, params=(), one=False):
-    conn = get_db_connection()
-    if not conn:
+    try:
+        conn = get_db_connection()
+    except Exception as e:
+        print(f"Database Initialization Error: {e}")
         return []
     
     cursor = conn.cursor(dictionary=True)
