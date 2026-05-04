@@ -40,12 +40,19 @@ def login():
         password = request.form['password']
 
         user = query_db("SELECT * FROM users WHERE LOWER(email) = LOWER(%s)", (email,), one=True)
-
-        if user and check_password_hash(user['password'], password):
-            session['user_id'] = user['id']
-            session['user_name'] = user['name']
-            return redirect(url_for('dashboard.dashboard'))
+        
+        if user:
+            print(f"DEBUG: User found: {email}")
+            password_matches = check_password_hash(user['password'], password)
+            print(f"DEBUG: Password match: {password_matches}")
+            if password_matches:
+                session['user_id'] = user['id']
+                session['user_name'] = user['name']
+                return redirect(url_for('dashboard.dashboard'))
+            else:
+                flash('Invalid email or password!', 'danger')
         else:
+            print(f"DEBUG: User not found: {email}")
             flash('Invalid email or password!', 'danger')
 
     return render_template('login.html')
