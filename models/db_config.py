@@ -1,4 +1,5 @@
-import pymysql
+import psycopg2
+from psycopg2.extras import DictCursor
 import sqlite3
 import os
 from dotenv import load_dotenv
@@ -15,7 +16,10 @@ class DBConnection:
             cursor = self.conn.cursor()
             return SQLiteCursor(cursor)
         else:
-            return self.conn.cursor(pymysql.cursors.DictCursor if dictionary else None)
+            if dictionary:
+                return self.conn.cursor(cursor_factory=DictCursor)
+            else:
+                return self.conn.cursor()
     
     def commit(self):
         self.conn.commit()
@@ -29,8 +33,9 @@ class SQLiteCursor:
     
     def execute(self, query, params=None):
         query = query.replace('%s', '?')
-        # Handle MySQL specific functions
+        # Handle PostgreSQL/MySQL specific functions for SQLite fallback
         query = query.replace("DATE_FORMAT(date, '%b %Y')", "strftime('%m %Y', date)")
+        query = query.replace("MONTH(date) = MONTH(CURRENT_DATE)", "strftime('%m', date) = strftime('%m', 'now')")
         query = query.replace("MONTH(date) = MONTH(CURDATE())", "strftime('%m', date) = strftime('%m', 'now')")
         return self.cursor.execute(query, params or ())
     
@@ -49,22 +54,34 @@ class SQLiteCursor:
         return self.cursor.description
 
 def get_db_connection():
-    # Try MySQL first
+    # Try PostgreSQL (Supabase) first
+    database_url = os.getenv('DATABASE_URL')
     host = os.getenv('DB_HOST')
-    if host:
+    
+    if database_url or host:
         try:
-            connection = pymysql.connect(
-                host=host,
-                user=os.getenv('DB_USER', 'root'),
-                password=os.getenv('DB_PASSWORD', ''),
-                database=os.getenv('DB_NAME', 'smart_finance_db'),
-                port=int(os.getenv('DB_PORT', 3306)),
-                ssl={'ssl': {}} if os.getenv('DB_SSL') == 'true' else None,
-                autocommit=True
-            )
+            if database_url:
+                connection = psycopg2.connect(database_url)
+            else:
+                connection = psycopg2.connect(
+                    host=host,
+                    user=os.getenv('DB_USER', 'postgres'),
+                    password=os.getenv('DB_PASSWORD', ''),
+                    database=os.getenv('DB_NAME', 'postgres'),
+                    port=int(os.getenv('DB_PORT', 5432))
+                )
+            # Ensure tables exist in Postgres
+            cursor = connection.cursor()
+            cursor.execute("CREATE TABLE IF NOT EXISTS users (id SERIAL PRIMARY KEY, name VARCHAR(255), email VARCHAR(255) UNIQUE, password TEXT, created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP)")
+            cursor.execute("CREATE TABLE IF NOT EXISTS expenses (id SERIAL PRIMARY KEY, user_id INTEGER, amount DECIMAL, category VARCHAR(255), date DATE, description TEXT, created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP)")
+            cursor.execute("CREATE TABLE IF NOT EXISTS income (id SERIAL PRIMARY KEY, user_id INTEGER, amount DECIMAL, source VARCHAR(255), date DATE, created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP)")
+            cursor.execute("CREATE TABLE IF NOT EXISTS budget (id SERIAL PRIMARY KEY, user_id INTEGER, limit_amount DECIMAL, created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP)")
+            connection.commit()
+            cursor.close()
+            
             return DBConnection(connection, False)
         except Exception as e:
-            print(f"MySQL Connection Error: {e}")
+            print(f"PostgreSQL/Supabase Connection Error: {e}")
     
     # Fallback to SQLite
     db_path = 'finance_tracker.db'
@@ -96,10 +113,15 @@ def query_db(query, params=(), one=False):
     cursor = conn.cursor(dictionary=True)
     try:
         cursor.execute(query, params)
-        if any(q in query.upper() for q in ['INSERT', 'UPDATE', 'DELETE']):
+        if any(q in query.upper() for q in ['INSERT', 'UPDATE', 'DELETE', 'CREATE']):
             conn.commit()
         
-        rv = cursor.fetchall()
+        # Postgres returns tuples/lists even with DictCursor if there are no results or it's a mutation, 
+        # but DictCursor fetchall() returns dict-like objects.
+        if cursor.description: # If there are results to fetch
+            rv = cursor.fetchall()
+        else:
+            rv = []
     except Exception as e:
         print(f"Database Query Error: {e}")
         rv = []
