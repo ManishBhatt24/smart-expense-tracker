@@ -19,6 +19,12 @@ def register():
         hashed_password = generate_password_hash(password)
         
         try:
+            # Check if user already exists
+            existing_user = query_db("SELECT id FROM users WHERE LOWER(email) = LOWER(%s)", (email,), one=True)
+            if existing_user:
+                flash('Email already registered!', 'danger')
+                return redirect(url_for('auth.register'))
+
             query_db("INSERT INTO users (name, email, password) VALUES (%s, %s, %s)", (name, email, hashed_password))
             flash('Registration successful! Please login.', 'success')
             return redirect(url_for('auth.login'))
@@ -33,7 +39,7 @@ def login():
         email = request.form['email']
         password = request.form['password']
 
-        user = query_db("SELECT * FROM users WHERE email = %s", (email,), one=True)
+        user = query_db("SELECT * FROM users WHERE LOWER(email) = LOWER(%s)", (email,), one=True)
 
         if user and check_password_hash(user['password'], password):
             session['user_id'] = user['id']
