@@ -26,10 +26,10 @@ def analytics():
     category_data = query_db("SELECT category, SUM(amount) as total FROM expenses WHERE user_id = %s GROUP BY category", (user_id,))
     
     monthly_data = query_db("""
-        SELECT TO_CHAR(date::date, 'MM YYYY') as month, SUM(amount) as total 
+        SELECT strftime('%m %Y', date) as month, SUM(amount) as total 
         FROM expenses 
-        WHERE user_id = %s AND date::date >= CURRENT_DATE - INTERVAL '6 months'
-        GROUP BY TO_CHAR(date::date, 'MM YYYY')
+        WHERE user_id = %s AND date >= date('now', '-6 months')
+        GROUP BY month 
         ORDER BY MIN(date)
     """, (user_id,))
 

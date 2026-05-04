@@ -1,6 +1,6 @@
 flask
 flask-session
-psycopg2-binary
+mysql-connector-python
 pandas
 numpy
 matplotlib

@@ -23,11 +23,6 @@ app.register_blueprint(expenses_bp)
 app.register_blueprint(income_bp)
 app.register_blueprint(analytics_bp)
 
-from models.db_config import init_db
-
-# Initialize Supabase tables
-init_db()
-
 @app.route('/')
 def index():
     if 'user_id' in session:
