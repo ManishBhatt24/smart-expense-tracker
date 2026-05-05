@@ -43,7 +43,7 @@ def login():
         password = request.form['password']
 
         conn = get_db_connection()
-        if conn:
+        if isinstance(conn, DBConnection):
             try:
                 cursor = conn.cursor()
                 cursor.execute("SELECT * FROM users WHERE email = %s", (email,))
@@ -60,7 +60,7 @@ def login():
             except Exception as e:
                 flash(f'Database Error: {str(e)}', 'danger')
         else:
-            flash('Connection Error: Please check your Vercel Environment Variables (SUPABASE_DB_URL).', 'danger')
+            flash(str(conn), 'danger')
 
     return render_template('login.html')
 

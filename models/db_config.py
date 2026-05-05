@@ -12,36 +12,36 @@ def get_db_connection():
     # Detect Environment
     is_vercel = os.getenv('VERCEL') == '1' or os.getenv('VERCEL') is not None
     
-    # Try Supabase/Postgres first
-    supabase_url = os.getenv('SUPABASE_DB_URL')
+    # Try Supabase/Postgres (Check multiple possible env var names)
+    supabase_url = os.getenv('SUPABASE_DB_URL') or os.getenv('DATABASE_URL')
+    
     if supabase_url:
         try:
+            # Handle standard protocol prefix if needed
+            if supabase_url.startswith('postgres://'):
+                supabase_url = supabase_url.replace('postgres://', 'postgresql://', 1)
+                
             # Ensure SSL is enabled for Supabase
             if 'sslmode' not in supabase_url:
-                if '?' in supabase_url:
-                    supabase_url += '&sslmode=require'
-                else:
-                    supabase_url += '?sslmode=require'
+                separator = '&' if '?' in supabase_url else '?'
+                supabase_url += f"{separator}sslmode=require"
             
             connection = psycopg2.connect(supabase_url)
             init_postgres_tables(connection)
             return DBConnection(connection, False, True)
         except Exception as e:
+            # We return a dummy object that carries the error to the route
             print(f"DATABASE ERROR: {str(e)}")
-            if is_vercel:
-                # On Vercel, we need to know why it failed
-                return None
+            return f"Error: {str(e)}"
     
     # Fallback to SQLite (local development only)
     if not is_vercel:
         try:
             return DBConnection(get_sqlite_conn_internal(), True, False)
         except Exception as e:
-            print(f"SQLite fallback failed: {e}")
-            return None
+            return f"SQLite Error: {str(e)}"
     
-    print("CRITICAL: No database connection available.")
-    return None
+    return "Error: Environment Variable 'SUPABASE_DB_URL' not found in Vercel settings."
 
 class DBConnection:
     def __init__(self, conn, is_sqlite, is_postgres=False):
