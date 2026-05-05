@@ -44,20 +44,23 @@ def login():
 
         conn = get_db_connection()
         if conn:
-            cursor = conn.cursor(dictionary=True)
-            cursor.execute("SELECT * FROM users WHERE email = %s", (email,))
-            user = cursor.fetchone()
-            cursor.close()
-            close_connection(conn)
+            try:
+                cursor = conn.cursor()
+                cursor.execute("SELECT * FROM users WHERE email = %s", (email,))
+                user = cursor.fetchone()
+                cursor.close()
+                close_connection(conn)
 
-            if user and check_password_hash(user['password'], password):
-                session['user_id'] = user['id']
-                session['user_name'] = user['name']
-                return redirect(url_for('dashboard.dashboard'))
-            else:
-                flash('Invalid email or password!', 'danger')
+                if user and check_password_hash(user['password'], password):
+                    session['user_id'] = user['id']
+                    session['user_name'] = user['name']
+                    return redirect(url_for('dashboard.dashboard'))
+                else:
+                    flash('Invalid email or password!', 'danger')
+            except Exception as e:
+                flash(f'Database Error: {str(e)}', 'danger')
         else:
-            flash('Database connection failed!', 'danger')
+            flash('Connection Error: Please check your Vercel Environment Variables (SUPABASE_DB_URL).', 'danger')
 
     return render_template('login.html')
 
