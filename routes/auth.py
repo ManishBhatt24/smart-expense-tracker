@@ -43,24 +43,21 @@ def login():
         password = request.form['password']
 
         conn = get_db_connection()
-        if isinstance(conn, DBConnection):
-            try:
-                cursor = conn.cursor()
-                cursor.execute("SELECT * FROM users WHERE email = %s", (email,))
-                user = cursor.fetchone()
-                cursor.close()
-                close_connection(conn)
+        if conn:
+            cursor = conn.cursor(dictionary=True)
+            cursor.execute("SELECT * FROM users WHERE email = %s", (email,))
+            user = cursor.fetchone()
+            cursor.close()
+            close_connection(conn)
 
-                if user and check_password_hash(user['password'], password):
-                    session['user_id'] = user['id']
-                    session['user_name'] = user['name']
-                    return redirect(url_for('dashboard.dashboard'))
-                else:
-                    flash('Invalid email or password!', 'danger')
-            except Exception as e:
-                flash(f'Database Error: {str(e)}', 'danger')
+            if user and check_password_hash(user['password'], password):
+                session['user_id'] = user['id']
+                session['user_name'] = user['name']
+                return redirect(url_for('dashboard.dashboard'))
+            else:
+                flash('Invalid email or password!', 'danger')
         else:
-            flash(str(conn), 'danger')
+            flash('Database connection failed!', 'danger')
 
     return render_template('login.html')
 

@@ -1,65 +1,43 @@
-import psycopg2
-from psycopg2 import extras
+import mysql.connector
+from mysql.connector import Error
 import sqlite3
 import os
 from dotenv import load_dotenv
 
 load_dotenv()
 
-DB_TYPE = os.getenv('DB_TYPE', 'postgres') 
+DB_TYPE = os.getenv('DB_TYPE', 'mysql') # Default to mysql, but will fallback
 
 def get_db_connection():
-    # Detect Environment
-    is_vercel = os.getenv('VERCEL') == '1' or os.getenv('VERCEL') is not None
-    
-    # Try Supabase/Postgres (Check multiple possible env var names)
-    supabase_url = os.getenv('SUPABASE_DB_URL') or os.getenv('DATABASE_URL')
-    
-    if supabase_url:
-        try:
-            # Handle standard protocol prefix if needed
-            if supabase_url.startswith('postgres://'):
-                supabase_url = supabase_url.replace('postgres://', 'postgresql://', 1)
-                
-            # Ensure SSL is enabled for Supabase
-            if 'sslmode' not in supabase_url:
-                separator = '&' if '?' in supabase_url else '?'
-                supabase_url += f"{separator}sslmode=require"
-            
-            connection = psycopg2.connect(supabase_url)
-            init_postgres_tables(connection)
-            return DBConnection(connection, False, True)
-        except Exception as e:
-            # We return a dummy object that carries the error to the route
-            print(f"DATABASE ERROR: {str(e)}")
-            return f"Error: {str(e)}"
-    
-    # Fallback to SQLite (local development only)
-    if not is_vercel:
-        try:
-            return DBConnection(get_sqlite_conn_internal(), True, False)
-        except Exception as e:
-            return f"SQLite Error: {str(e)}"
-    
-    return "Error: Environment Variable 'SUPABASE_DB_URL' not found in Vercel settings."
+    # Try MySQL first
+    try:
+        connection = mysql.connector.connect(
+            host=os.getenv('DB_HOST', 'localhost'),
+            user=os.getenv('DB_USER', 'root'),
+            password=os.getenv('DB_PASSWORD', ''),
+            database=os.getenv('DB_NAME', 'smart_finance_db'),
+            auth_plugin='mysql_native_password'
+        )
+        if connection.is_connected():
+            return connection
+    except Error:
+        # Fallback to SQLite if MySQL fails
+        return get_sqlite_connection()
 
 class DBConnection:
-    def __init__(self, conn, is_sqlite, is_postgres=False):
+    def __init__(self, conn, is_sqlite):
         self.conn = conn
         self.is_sqlite = is_sqlite
-        self.is_postgres = is_postgres
-
-    def cursor(self, dictionary=True):
+    def cursor(self, dictionary=False):
+        cursor = self.conn.cursor()
         if self.is_sqlite:
-            return SQLiteCursor(self.conn.cursor())
-        elif self.is_postgres:
-            return self.conn.cursor(cursor_factory=extras.RealDictCursor)
+            # SQLite uses row_factory for dictionaries
+            return SQLiteCursor(cursor)
         else:
+            # MySQL uses dictionary argument
             return self.conn.cursor(dictionary=dictionary)
-
     def commit(self):
         self.conn.commit()
-
     def close(self):
         self.conn.close()
 
@@ -69,6 +47,7 @@ class SQLiteCursor:
     def execute(self, query, params=None):
         query = query.replace('%s', '?')
         # Handle cases where MONTH() or DATE_FORMAT() are used (MySQL specific)
+        # For simplicity, we'll try to convert common ones
         query = query.replace("DATE_FORMAT(date, '%b %Y')", "strftime('%m %Y', date)")
         query = query.replace("MONTH(date) = MONTH(CURDATE())", "strftime('%m', date) = strftime('%m', 'now')")
         query = query.replace("DATE_SUB(CURDATE(), INTERVAL 6 MONTH)", "date('now', '-6 months')")
@@ -85,53 +64,25 @@ class SQLiteCursor:
     def description(self):
         return self.cursor.description
 
-def init_postgres_tables(conn):
-    cursor = conn.cursor()
-    cursor.execute("""
-        CREATE TABLE IF NOT EXISTS users (
-            id SERIAL PRIMARY KEY,
-            name TEXT,
-            email TEXT UNIQUE,
-            password TEXT,
-            created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+def get_db_connection():
+    try:
+        connection = mysql.connector.connect(
+            host=os.getenv('DB_HOST', 'localhost'),
+            user=os.getenv('DB_USER', 'root'),
+            password=os.getenv('DB_PASSWORD', ''),
+            database=os.getenv('DB_NAME', 'smart_finance_db'),
+            auth_plugin='mysql_native_password'
         )
-    """)
-    cursor.execute("""
-        CREATE TABLE IF NOT EXISTS expenses (
-            id SERIAL PRIMARY KEY,
-            user_id INTEGER,
-            amount NUMERIC,
-            category TEXT,
-            date TEXT,
-            description TEXT,
-            created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
-        )
-    """)
-    cursor.execute("""
-        CREATE TABLE IF NOT EXISTS income (
-            id SERIAL PRIMARY KEY,
-            user_id INTEGER,
-            amount NUMERIC,
-            source TEXT,
-            date TEXT,
-            created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
-        )
-    """)
-    cursor.execute("""
-        CREATE TABLE IF NOT EXISTS budget (
-            id SERIAL PRIMARY KEY,
-            user_id INTEGER,
-            limit_amount NUMERIC,
-            created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
-        )
-    """)
-    conn.commit()
-    cursor.close()
+        if connection.is_connected():
+            return DBConnection(connection, False)
+    except Error:
+        return DBConnection(get_sqlite_conn_internal(), True)
 
 def get_sqlite_conn_internal():
     db_path = 'finance_tracker.db'
     conn = sqlite3.connect(db_path, check_same_thread=False)
     conn.row_factory = sqlite3.Row
+    # Initialize ... (same as before)
     cursor = conn.cursor()
     cursor.execute("CREATE TABLE IF NOT EXISTS users (id INTEGER PRIMARY KEY AUTOINCREMENT, name TEXT, email TEXT UNIQUE, password TEXT, created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP)")
     cursor.execute("CREATE TABLE IF NOT EXISTS expenses (id INTEGER PRIMARY KEY AUTOINCREMENT, user_id INTEGER, amount REAL, category TEXT, date TEXT, description TEXT, created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP)")
@@ -148,21 +99,20 @@ def query_db(query, params=(), one=False):
     conn = get_db_connection()
     if not conn:
         return []
-    cursor = conn.cursor()
+    cursor = conn.cursor(dictionary=True)
+    cursor.execute(query, params)
     
+    # Commit changes for non-SELECT queries
+    if any(q in query.upper() for q in ['INSERT', 'UPDATE', 'DELETE']):
+        conn.commit()
+    
+    # Try to fetch results (only for SELECT or queries that return rows)
+    rv = []
     try:
-        cursor.execute(query, params)
-        
-        if any(q in query.upper() for q in ['INSERT', 'UPDATE', 'DELETE']):
-            conn.commit()
-        
-        rv = []
-        try:
-            rv = cursor.fetchall()
-        except:
-            pass 
+        rv = cursor.fetchall()
+    except:
+        pass # Not a SELECT query
 
-        return (rv[0] if rv else None) if one else rv
-    finally:
-        cursor.close()
-        conn.close()
+    cursor.close()
+    conn.close()
+    return (rv[0] if rv else None) if one else rv
