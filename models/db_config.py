@@ -10,18 +10,27 @@ DB_TYPE = os.getenv('DB_TYPE', 'postgres')
 
 def get_db_connection():
     # Try Supabase/Postgres first
-    try:
-        supabase_url = os.getenv('SUPABASE_DB_URL')
-        if supabase_url:
+    supabase_url = os.getenv('SUPABASE_DB_URL')
+    if supabase_url:
+        try:
             connection = psycopg2.connect(supabase_url)
             # Initialize tables for Postgres
             init_postgres_tables(connection)
             return DBConnection(connection, False, True)
-    except Exception as e:
-        print(f"Supabase connection failed: {e}. Falling back to SQLite.")
-        
-    # Fallback to SQLite
-    return DBConnection(get_sqlite_conn_internal(), True, False)
+        except Exception as e:
+            print(f"Supabase connection failed: {e}")
+            # If we are on Vercel, we can't use SQLite fallback easily
+            if os.getenv('VERCEL'):
+                raise e
+    
+    # Fallback to SQLite (local only)
+    if not os.getenv('VERCEL'):
+        try:
+            return DBConnection(get_sqlite_conn_internal(), True, False)
+        except Exception as e:
+            print(f"SQLite fallback failed: {e}")
+            return None
+    return None
 
 class DBConnection:
     def __init__(self, conn, is_sqlite, is_postgres=False):
