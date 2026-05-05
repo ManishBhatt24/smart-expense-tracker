@@ -62,6 +62,8 @@ def get_db_connection():
                 user=os.getenv('DB_USER'),
                 password=os.getenv('DB_PASSWORD'),
                 database=os.getenv('DB_NAME'),
+                port=int(os.getenv('DB_PORT', 4000)),
+                ssl_disabled=False,
                 auth_plugin='mysql_native_password'
             )
             if connection.is_connected():
