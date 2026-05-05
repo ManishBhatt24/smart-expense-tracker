@@ -9,27 +9,38 @@ load_dotenv()
 DB_TYPE = os.getenv('DB_TYPE', 'postgres') 
 
 def get_db_connection():
+    # Detect Environment
+    is_vercel = os.getenv('VERCEL') == '1' or os.getenv('VERCEL') is not None
+    
     # Try Supabase/Postgres first
     supabase_url = os.getenv('SUPABASE_DB_URL')
     if supabase_url:
         try:
+            # Ensure SSL is enabled for Supabase
+            if 'sslmode' not in supabase_url:
+                if '?' in supabase_url:
+                    supabase_url += '&sslmode=require'
+                else:
+                    supabase_url += '?sslmode=require'
+            
             connection = psycopg2.connect(supabase_url)
-            # Initialize tables for Postgres
             init_postgres_tables(connection)
             return DBConnection(connection, False, True)
         except Exception as e:
-            print(f"Supabase connection failed: {e}")
-            # If we are on Vercel, we can't use SQLite fallback easily
-            if os.getenv('VERCEL'):
-                raise e
+            print(f"DATABASE ERROR: {str(e)}")
+            if is_vercel:
+                # On Vercel, we need to know why it failed
+                return None
     
-    # Fallback to SQLite (local only)
-    if not os.getenv('VERCEL'):
+    # Fallback to SQLite (local development only)
+    if not is_vercel:
         try:
             return DBConnection(get_sqlite_conn_internal(), True, False)
         except Exception as e:
             print(f"SQLite fallback failed: {e}")
             return None
+    
+    print("CRITICAL: No database connection available.")
     return None
 
 class DBConnection:
