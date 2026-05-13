@@ -1,3 +1,4 @@
+<<<<<<< HEAD
 .env
 *.db
 __pycache__/
@@ -8,8 +9,9 @@ venv/
 node_modules/
 .vercel
 .env*.local
-
+=======
 # Byte-compiled / optimized / DLL files
+__pycache__/
 *.py[codz]
 *$py.class
 
@@ -226,3 +228,4 @@ __marimo__/
 
 # Streamlit
 .streamlit/secrets.toml
+>>>>>>> ea21fd48ce8acdac8f9486ed782ef02ce811549d

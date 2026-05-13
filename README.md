@@ -1,3 +1,5 @@
+<<<<<<< HEAD
+<<<<<<< HEAD
 # Smart Personal Finance & Expense Tracker with Analytics
 
 A full-stack web application built with Flask and MySQL, featuring a modern Glassmorphism UI.
@@ -45,3 +47,11 @@ A full-stack web application built with Flask and MySQL, featuring a modern Glas
 - `models/`: Database configuration.
 - `routes/`: Flask blueprints for different modules.
 - `app.py`: Main application entry point.
+=======
+# Smart-Expense-Tracker
+A full-stack personal finance management system with features for expense tracking, budgeting, and financial insights.
+>>>>>>> ea21fd48ce8acdac8f9486ed782ef02ce811549d
+=======
+# Smart-Expense-Tracker
+A full-stack personal finance management system with features for expense tracking, budgeting, and financial insights.
+>>>>>>> 753075a200519e471238aacdf2c7ef5d70984d27
